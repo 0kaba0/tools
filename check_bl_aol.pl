@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 ##############################################################
 #  Script     : check_bl_aol
-#  Version    : 1.25
+#  Version    : 1.26
 #  Author     : Igor Ru
 #  Date       : 11/16/2017
 #  Last Edited: 03/07/2018, igor.ru
@@ -177,25 +177,12 @@ sub check_aol_service
     my $error_return = "";
     my $sock = undef;
     
-#   while ($count < 4)
-#   {
-#	$aol_server = "mailin-0".$count.".mx.aol.com";
-	$aol_server = "mx-aol.mail.gm0.yahoodns.net";
-	$sock = IO::Socket::INET->new( PeerAddr => $aol_server,
+    $aol_server = "mx-aol.mail.gm0.yahoodns.net";
+    $sock = IO::Socket::INET->new( PeerAddr => $aol_server,
                                PeerPort => '25',
 			       LocalAddr => $Local_Addr,
                                Proto    => 'tcp',
 			       Timeout  => '6') or $error_return = "UNKNOWN; Can't connect to $aol_server from $Local_Addr. Reason: $!";
-
-#	if (! $sock)
-#	{
-#	    $count = $count+1;
-#	}
-#	else
-#	{
-#	    $count = 5;
-#	}
-#   }
 
     if (! $sock)
     {
@@ -212,22 +199,33 @@ sub check_aol_service
 	chomp $line;
 	if ($line =~ /220 mta/)
 	{
-	    print $sock "EHLO ".$Local_Addr_Hello."\n";
+            if ($DEBUG) { print ">>>> ".$line."\n"; }
+	    print $sock "ehlo ".$Local_Addr_Hello."\n";
 	    $i = $i + 1;
 	}
     
 	if (($i == 1) && ($line =~ /250 STARTTLS/))
 	{
-	    $i = 0;
-	    print $sock "QUIT\n";
-	    return "OK";
+	    if ($DEBUG) { print ">>>> ".$line."\n"; }
+            print $sock "mail from: <postmaster\@privateemail.com>\n";
+	    $i=2;    
 	}
 
-	if ($line =~ /554/)
+	if (($i == 2) && (($line =~ /554/) || ($line =~ /451/))) 
 	{
+	    if ($DEBUG) { print ">>>> ".$line."\n"; }
 	    $error_string = $line;
 	    print $sock "QUIT\n";
 	    return "CRITICAL; AOL returns: ".$error_string;
+	}
+	else
+	{
+	    if (($i == 2) && ($line =~ /250 sender/))
+	    {
+	    	if ($DEBUG) { print ">>>> ".$line."\n"; }
+	    	print $sock "QUIT\n";
+            	return "OK";
+	    }
 	}
 	
     }
