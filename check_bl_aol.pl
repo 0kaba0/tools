@@ -19,6 +19,7 @@ my $cache_file = "/tmp/server_mail_ip.cache";
 my $bad_count = 0;
 my $full_check_return;
 my @ips_on = uniq(find_mail_ips());
+my $code = "";
 
 my $DEBUG = 0;
 
@@ -52,6 +53,8 @@ if (! -f $cache_file)
 	if ($check_return =~ /CRITICAL/)
 	{
 	    my @tmp_dd_retn = split(/;/,$check_return);
+            my @tmp_dd_retn2 = split(/ /,$check_return);
+
 	    if ($bad_count == 0)
 	    {
 		$full_check_return = "CHECK_AOL CRITICAL - IPs BLACKLISTED (".$real_ipaddr;
@@ -61,6 +64,7 @@ if (! -f $cache_file)
 		$full_check_return = $full_check_return.",".$real_ipaddr;
 	    }
 	    $bad_count = $bad_count + 1;
+	    $code = $tmp_dd_retn2[3]." ".$tmp_dd_retn2[4]." ".$tmp_dd_retn2[5];
 	}
 	else
 	{
@@ -82,7 +86,14 @@ if (! -f $cache_file)
     }
     else
     {
-	$full_check_return = $full_check_return."). Return code: 554";
+	if ($code ne "")
+	{
+	   $full_check_return = $full_check_return."). Return code: ".$code;
+	}
+	else
+	{
+	   $full_check_return = $full_check_return."). Return code: 554";
+	}
 	print $full_check_return."\n";
 	exit $status{CRITICAL};
     }
@@ -120,6 +131,8 @@ else
 	    {
 	
 		my @tmp_dd_retn = split(/;/,$check_return);
+		my @tmp_dd_retn2 = split(/ /,$check_return);
+
 		if ($bad_count == 0)
 		{
 		    $full_check_return = "CHECK_AOL CRITICAL - IPs BLACKLISTED (".$real_ipaddr;
@@ -129,6 +142,7 @@ else
 		    $full_check_return = $full_check_return.",".$real_ipaddr;
 		}
 		$bad_count = $bad_count + 1;
+		$code = $tmp_dd_retn2[3]." ".$tmp_dd_retn2[4]." ".$tmp_dd_retn2[5]
 	    }
 	    else
 	    {
@@ -153,7 +167,14 @@ else
     }
     else
     {
-	$full_check_return = $full_check_return."). Return code: 554";
+	if ($code ne "")
+	{
+	   $full_check_return = $full_check_return."). Return code: ".$code;
+	}
+	else
+	{
+	   $full_check_return = $full_check_return."). Return code: 554";
+	}
 	print $full_check_return."\n";
 	exit $status{CRITICAL};
     }
@@ -208,10 +229,11 @@ sub check_aol_service
 	{
 	    if ($DEBUG) { print ">>>> ".$line."\n"; }
             print $sock "mail from: <postmaster\@privateemail.com>\n";
+	    print $sock "mail to: <igor.ru\@aol.com>\n";
 	    $i=2;    
 	}
 
-	if (($i == 2) && (($line =~ /554/) || ($line =~ /451/))) 
+	if (($i == 2) && (($line =~ /554/) || ($line =~ /451/) || ($line =~ /421/))) 
 	{
 	    if ($DEBUG) { print ">>>> ".$line."\n"; }
 	    $error_string = $line;
@@ -220,11 +242,23 @@ sub check_aol_service
 	}
 	else
 	{
-	    if (($i == 2) && ($line =~ /250 sender/))
+	    if (($i == 2))
 	    {
 	    	if ($DEBUG) { print ">>>> ".$line."\n"; }
-	    	print $sock "QUIT\n";
-            	return "OK";
+		print $sock "mail to: <igor.ru\@aol.com>\n";
+		$line=<$sock>;
+		if ($DEBUG) { print ">>>> ".$line."\n"; }
+		if (($line =~ /554/) || ($line =~ /451/) || ($line =~ /421/))
+		{
+		   $error_string = $line;
+            	   print $sock "QUIT\n";
+            	   return "CRITICAL; AOL returns: ".$error_string;
+		}
+		else
+		{
+	    	   print $sock "QUIT\n";
+            	   return "OK";
+		}
 	    }
 	}
 	
