@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 ##############################################################
 #  Script     : check_bl_aol
-#  Version    : 1.27
+#  Version    : 1.28
 #  Author     : Igor Ru
 #  Date       : 11/16/2017
 #  Last Edited: 04/03/2018, igor.ru
@@ -20,8 +20,12 @@ my $bad_count = 0;
 my $full_check_return;
 my @ips_on = uniq(find_mail_ips());
 my $code = "";
-my $colRED="\033[1;34m";
+my $colBLUE="\033[1;34m";
 my $colNC="\033[0m";
+my $colRED="\033[0;31m";
+my $colGREEN="\033[0;36m";
+my $colEL = "\033[1;33m";
+my $colW = "\033[1;37m";
 
 my $DEBUG = 0;
 
@@ -30,7 +34,7 @@ if (! -f $cache_file)
     
     if ($DEBUG)
     {
-	print "Point 1\n";
+	print $colRED."IP cache file not found\n\n".$colNC;
     }
     
     open(FF, ">>".$cache_file);
@@ -49,12 +53,19 @@ if (! -f $cache_file)
 	
 	if ($DEBUG)
 	{
-	    print 'Int IP|Real IP: '.$int_ip.'|'.$real_ipaddr.' EHLO: '.$ext_ips[1]." ".$check_return."\n\n";
+	    if ($int_ip eq $real_ipaddr)
+	    {
+		print $colBLUE.'IP: '.$colEL.$real_ipaddr.$colBLUE.' EHLO: '.$colEL.$ext_ips[1]." ".$check_return."\n\n".$colNC;
+	    }
+	    else
+	    {
+		print $colBLUE.'IP Int|Real: '.$colEL.$int_ip.' '.$real_ipaddr.$colBLUE.' EHLO: '.$colEL.$ext_ips[1]." ".$check_return."\n\n".$colNC;
+	    }
 	}
 	
 	if ($check_return =~ /CRITICAL/)
 	{
-	    my @tmp_dd_retn = split(/;/,$check_return);
+	#    my @tmp_dd_retn = split(/;/,$check_return);
             my @tmp_dd_retn2 = split(/ /,$check_return);
 
 	    if ($bad_count == 0)
@@ -104,7 +115,7 @@ else
 {
     if ($DEBUG)
     {
-	print "Point 2\n";
+	print $colGREEN."IP cache file found\n\n".$colNC;
     }
     
     foreach my $n (@ips_on)
@@ -126,13 +137,20 @@ else
 	    
 	    if ($DEBUG)
 	    {
-		print $colRED.'Int IP|Real IP: '.$int_ip.'|'.$real_ipaddr.' EHLO: '.$ext_ips[1]." ".$check_return."\n\n".$colNC;
+		if ($int_ip eq $real_ipaddr)
+		{
+		    print $colBLUE.'IP: '.$colEL.$real_ipaddr.$colBLUE.' EHLO: '.$colEL.$ext_ips[1]." ".$check_return."\n\n".$colNC;
+		}
+		else
+		{
+		    print $colBLUE.'IP Int|Real: '.$colEL.$int_ip.' '.$real_ipaddr.$colBLUE.' EHLO: '.$colEL.$ext_ips[1]." ".$check_return."\n\n".$colNC;
+		}
 	    }
 	    
 	    if ($check_return =~ /CRITICAL/)
 	    {
 	
-		my @tmp_dd_retn = split(/;/,$check_return);
+	#	my @tmp_dd_retn = split(/;/,$check_return);
 		my @tmp_dd_retn2 = split(/ /,$check_return);
 
 		if ($bad_count == 0)
@@ -189,9 +207,6 @@ sub check_aol_service
     my $Local_Addr = $_[0];
     my $Local_Addr_Hello = $_[1];
     
-#    my @set = ( 2, 4 );
-#    my $random = $set[rand(@set)];
-
     my $count = 1;
 
     #need to review code to check all AOL servers if timeout
@@ -222,33 +237,33 @@ sub check_aol_service
 	chomp $line;
 	if ($line =~ /220 mta/)
 	{
-            if ($DEBUG) { print ">>>> ".$line."\n"; }
+            if ($DEBUG) { print $colW.">>>> ".$colNC.$line."\n"; }
 	    print $sock "ehlo ".$Local_Addr_Hello."\n";
             if ($DEBUG) 
 	    {
 	      print "<--- ehlo ".$Local_Addr_Hello."\n";
 	      $line=<$sock>;
-              print ">>>> ".$line;
+              print $colW.">>>> ".$colNC.$line;
 	    }
 	    $i = $i + 1;
 	}
     
 	if (($i == 1) && ($line =~ /250 STARTTLS/))
 	{
-	    if ($DEBUG) { print ">>>> ".$line."\n"; }
+	    if ($DEBUG) { print $colW.">>>> ".$colNC.$line."\n"; }
             print $sock "mail from: <postmaster\@privateemail.com>\n";
 	    if ($DEBUG) 
 	    {
 	       print "<--- mail from: <postmaster\@privateemail.com>\n";
 	       $line=<$sock>;
-	       print ">>>> ".$line;
+	       print $colW.">>>> ".$colNC.$line;
 	    }
 	    print $sock "rcpt to: <igor.ru\@aol.com>\n";
 	    if ($DEBUG)
 	    {
 	       print "<--- rcpt to: <igor.ru\@aol.com>\n";
 	       $line=<$sock>;
-	       print ">>>> ".$line;
+	       print $colW.">>>> ".$colNC.$line;
 	    }
 	    $i=2;    
 	}
@@ -263,7 +278,7 @@ sub check_aol_service
 	    	{
 	       	   print "<--- QUIT\n\n";
 	    	}
-	    	return "CRITICAL; AOL returns: ".$error_string;
+	    	return $colRED."CRITICAL; AOL returns: ".$error_string;
 	    }
 	    else
 	    {
@@ -272,7 +287,7 @@ sub check_aol_service
                 {
                	   print "<--- QUIT\n\n";
             	}
-            	return "OK";
+            	return $colGREEN."OK";
 	    }
 	}
 	
